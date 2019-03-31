@@ -1,5 +1,7 @@
 #include<bits/stdc++.h>
 
+#define INF 999999
+
 typedef struct job {
     int d1; //duração da tarefa na máquina 1
     int d2; // ----------------------------2
@@ -20,6 +22,13 @@ int bnb(vector<job> jobs, int n) {
     /*nós ativos e não ativos (nós ativos são nós
      para os quais calculamos a função classificadora)*/
     //jobs em M e jobs fora de M (em M já decididos, fora ainda a explorar)
+
+    while (!active_nodes.empty()) {
+        int an_size = active_nodes.size();
+        for (int i = 0; i < an_size; i++) {
+            
+        }
+    }
 
 
 
@@ -44,11 +53,12 @@ int main() {
     for (int i = 0; i < n; i++) {
         initial.jobsinM.push_back(i);
     }
+    initial.classif = -INF; //não faz sentido aplicar a função classificadora para o primeiro nó
 
     /*a gente tem que implementar um algoritmo bruteforce que faz bfs no
     espaço de busca e faz bound pra melhor opção dada a função classificadora*/
     int sft;
-    sft = bnb(jobs, n);
+    sft = bnb(jobs, n, active_nodes);
     cout << sft << '\n';
 
     return 0;
