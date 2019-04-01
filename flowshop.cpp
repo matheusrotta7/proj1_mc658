@@ -1,6 +1,9 @@
 #include<bits/stdc++.h>
 
+using namespace std;
+
 #define INF 999999
+
 
 typedef struct job {
     int d1; //duração da tarefa na máquina 1
@@ -16,7 +19,7 @@ typedef struct node {
 
 
 
-int bnb(vector<job> jobs, int n) {
+int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
 
     //temos duas divisões em conjuntos:
     /*nós ativos e não ativos (nós ativos são nós
@@ -26,7 +29,7 @@ int bnb(vector<job> jobs, int n) {
     while (!active_nodes.empty()) {
         int an_size = active_nodes.size();
         for (int i = 0; i < an_size; i++) {
-            
+
         }
     }
 
