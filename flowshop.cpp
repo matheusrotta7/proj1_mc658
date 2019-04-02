@@ -2,6 +2,11 @@
 
 using namespace std;
 
+/* https://hal.archives-ouvertes.fr/hal-00680452v1/document
+ *
+ *
+ * */
+
 #define INF 999999
 
 typedef struct job {
@@ -12,21 +17,42 @@ typedef struct job {
 
 typedef struct node {
     vector<int> jobs_in_m;
-    vector<int> chosen_ones;
+    vector<int> chosen_jobs;
     int classif; //valor que a função classificadora dá para o nó (lim. dual)
 
 } node;
+
+
+/* S1 = sum of (jobs in jobs_in_m of node) 
+ *
+ * */
+int s1(&node n, vector<job> jobs) {
+
+}
+
+int s2(&node n, vector<job> jobs) {
+
+}
 
 int calc_bound(&node n, vector<job> jobs) {
     return n.classif = max(s1(n, jobs), s2(n, jobs));
 }
 
-void branch (&vector<node> active_nodes, int min_pos) {
+long long int branch (&vector<node> active_nodes, int min_pos) {
     int num_of_jobs = active_nodes[min_pos].jobs_in_m.size();
     if (num_of_jobs == 0) {
+        long long int sum = 0;
+
         //we reached a leaf
         //calculate real value of flowshop
-        real_value(----)
+        /* for(std::vector<int>::iterator it = vector.begin(); it != vector.end(); ++it)
+         *     sum_of_elems += *it;
+         * */
+        for(vector<int>::iterator it = vector.begin(); it != vector.end(); ++it)
+            sum += *it;
+
+        return sum;
+        
     }
     else {
 
@@ -40,30 +66,37 @@ void branch (&vector<node> active_nodes, int min_pos) {
                 }
             }
 
+            int num_of_chosen = active_nodes[min_pos].chosen_jobs.size();
+            for(int j = 0; j < num_of_chosen; j++) {
+                new_n.chosen_jobs.push_back(j); 
+            } 
+           
+            new_n.chosen_jobs.push_back(cur_job); 
             new_n.classif = calc_bound(new_n, jobs);
             active_nodes.push_back(new_n);
 
-            // int num_total_jobs = jobs.size();
-            // for(int i = 0; i < num_total_jobs; i++) {
-            //     if(jobs[i] not in new_n.jobs_in_m) {
-            //         new_n.chosen_ones.push_back(jobs[i]);
-            //     }
-            // }
         }
 
-
     }
+    return -1;
 
 }
 
 
-int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
+long long int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
 
     //temos duas divisões em conjuntos:
     /*nós ativos e não ativos (nós ativos são nós
      para os quais calculamos a função classificadora)*/
     //jobs em M e jobs fora de M (em M já decididos, fora ainda a explorar)
 
+    long long int limitante_primal = -1;
+
+
+    /*  TODO: esse while pode ter outra condição ne? a gente nao precisa ficar abrindo
+     *  mais nos depois que limitante_primal = limitante_dual
+     *  TODO: a gente ta deixando de adicionar nos por limitantes, otimalidade?
+     * */
     while (!active_nodes.empty()) {
         int an_size = active_nodes.size();
         int min_classif = +INF;
@@ -75,11 +108,10 @@ int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
             }
         }
 
-        branch (active_nodes, min_pos);
+        limitante_primal = min(limitante_primal, branch (active_nodes, min_pos));
     }
 
-
-
+    return limitante_primal;
 }
 
 int main() {
@@ -101,11 +133,11 @@ int main() {
     for (int i = 0; i < n; i++) {
         initial.jobs_in_m.push_back(i);
     }
-    initial.classif = calc_bound(initial, jobs); //não faz sentido aplicar a função classificadora para o primeiro nó
+    initial.classif = calc_bound(initial, jobs);
     active_nodes.push_back(initial);
     /*a gente tem que implementar um algoritmo bruteforce que faz bfs no
     espaço de busca e faz bound pra melhor opção dada a função classificadora*/
-    int sft;
+    long long int sft;
     sft = bnb(jobs, n, active_nodes);
     cout << sft << '\n';
 
