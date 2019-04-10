@@ -7,7 +7,8 @@ using namespace std;
  *
  * */
 
-#define INF 999999
+//#define INF numeric_limits<float>::infinity();
+#define INF numeric_limits<int>::max();
 
 typedef struct job {
     int d1; //duração da tarefa na máquina 1
@@ -43,11 +44,7 @@ long long int branch (&vector<node> active_nodes, int min_pos) {
     if (num_of_jobs == 0) {
         long long int sum = 0;
 
-        //we reached a leaf
-        //calculate real value of flowshop
-        /* for(std::vector<int>::iterator it = vector.begin(); it != vector.end(); ++it)
-         *     sum_of_elems += *it;
-         * */
+        return 
         for(vector<int>::iterator it = vector.begin(); it != vector.end(); ++it)
             sum += *it;
 
@@ -78,7 +75,7 @@ long long int branch (&vector<node> active_nodes, int min_pos) {
         }
 
     }
-    return -1;
+    return INF;
 
 }
 
@@ -90,7 +87,7 @@ long long int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
      para os quais calculamos a função classificadora)*/
     //jobs em M e jobs fora de M (em M já decididos, fora ainda a explorar)
 
-    long long int limitante_primal = -1;
+    long long int limitante_primal = INF;
 
 
     /*  TODO: esse while pode ter outra condição ne? a gente nao precisa ficar abrindo
@@ -99,7 +96,7 @@ long long int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
      * */
     while (!active_nodes.empty()) {
         int an_size = active_nodes.size();
-        int min_classif = +INF;
+        int min_classif = INF;
         int min_pos = -1; //because we believe that +INF is large enough, so min_pos will be overwritten
         for (int i = 0; i < an_size; i++) { //theta(an)
             if (min_classif > active_nodes[i].classif) {
@@ -138,6 +135,9 @@ int main() {
     /*a gente tem que implementar um algoritmo bruteforce que faz bfs no
     espaço de busca e faz bound pra melhor opção dada a função classificadora*/
     long long int sft;
+    /*
+ *      sft := sum of finishing times (m2)
+ * */
     sft = bnb(jobs, n, active_nodes);
     cout << sft << '\n';
 
