@@ -23,43 +23,56 @@ typedef struct node {
 
 } node;
 
+struct Comp {
+    Comp(vector<job> paramA) { this->paramA = paramA; }
+    bool operator () (int i, int j) {
+
+        return paramA[i].d1 < paramA[j].d1;
+
+    }
+
+    vector<job> paramA;
+};
+
 
 /* relaxação 1: overlapping permitido na máquina 2
  * cada job começa logo após o seu término na máquina 1
  * */
-int s1(node &n, vector<job> jobs) {
+ int s1(node &cur_node, vector<job> &jobs, int n) {
 
-    //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
-    sort(n.jobs_in_m.begin(), n.jobs_in_m.end());
-    int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
+     //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
+     int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
 
-    int cj_size = n.chosen_jobs.size();
-    for (int i = 0; i < cj_size; i++) {
-        int cur_job = n.chosen_jobs[i];
-        f1tr += jobs[cur_job].d1;
-    }
+     int cj_size = cur_node.chosen_jobs.size();
+     for (int i = 0; i < cj_size; i++) {
+         int cur_job = cur_node.chosen_jobs[i];
+         f1tr += jobs[cur_job].d1; //vai somando as durações dos jobs na máquina 1 na ordem dada por chosen_jobs, isso é o próprio f1tr
+     }
 
+     // vector<int> aux = cur_node.jobs_in_m
+     sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp(jobs));
+     int m_size = cur_node.jobs_in_m.size();
+     int sum = 0;
+     for (int j = 0, i = cj_size+1; j < m_size; i++, j++) {
+         int cur_job = cur_node.jobs_in_m[j];
+         sum += f1tr;
+         sum += (n-i+1)*jobs[cur_job].d1; //passar n como parâmetro ou deixar global
+         sum += jobs[cur_job].d2;
+     }
 
-    int m_size = n.jobs_in_m.size();
-    int sum = 0;
-    for (int i = 0; i < m_size; i++) {
-        sum += f1tr;
-    }
+     return sum;
+ }
 
-
-
+int s2(node &n, vector<job> &jobs, int n) {
 
 }
 
-int s2(node &n, vector<job> jobs) {
-
+int calc_bound(&node cur_node, vector<job> jobs, int n) {
+    int chosen_acc = (-----);
+    return cur_node.classif = chosen_acc + max(s1(cur_node, jobs), s2(cur_node, jobs));
 }
 
-int calc_bound(&node n, vector<job> jobs) {
-    return n.classif = max(s1(n, jobs), s2(n, jobs));
-}
-
-long long int branch (vector<node> &active_nodes, int min_pos) {
+long long int branch (vector<node> &active_nodes, int min_pos, int n) {
     int num_of_jobs = active_nodes[min_pos].jobs_in_m.size();
     if (num_of_jobs == 0) {
         long long int sum = 0;
@@ -86,7 +99,7 @@ long long int branch (vector<node> &active_nodes, int min_pos) {
             }
 
             new_n.chosen_jobs.push_back(cur_job);
-            new_n.classif = calc_bound(new_n, jobs);
+            new_n.classif = calc_bound(new_n, jobs, n);
             active_nodes.push_back(new_n);
 
         }
@@ -122,7 +135,7 @@ long long int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
             }
         }
 
-        limitante_primal = min(limitante_primal, branch (active_nodes, min_pos));
+        limitante_primal = min(limitante_primal, branch (active_nodes, min_pos, n));
         active_nodes.erase(active_nodes.begin() + min_pos); //pop explored node
     }
 
@@ -152,10 +165,10 @@ int main() {
     active_nodes.push_back(initial);
     /*a gente tem que implementar um algoritmo bruteforce que faz bfs no
     espaço de busca e faz bound pra melhor opção dada a função classificadora*/
-    long long int sft;
-    /*
- *      sft := sum of finishing times (m2)
- * */
+    long long int sft; //sft := sum of finishing times (m2)
+
+
+
     sft = bnb(jobs, n, active_nodes);
     cout << sft << '\n';
 
