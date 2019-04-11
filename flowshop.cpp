@@ -1,6 +1,7 @@
 #include<bits/stdc++.h>
 
 #define INF numeric_limits<int>::max();
+#define INF_ numeric_limits<int>::max()
 
 using namespace std;
 
@@ -50,8 +51,9 @@ struct Comp2 {
 };
 
 
-int s1(node &cur_node, vector<job> &jobs, int n);
-int calc_bound(node &cur_node, vector<job> jobs, int n);
+tuple<int, long long int> s1(node &cur_node, vector<job> &jobs, int n);
+tuple<int, long long int> s2(node &cur_node, vector<job> &jobs, int n);
+long long int calc_bound(node &cur_node, vector<job> jobs, int n);
 long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs);
 long long int branch(long long int limitante_primal, vector<node> &active_nodes, int min_pos, int n, vector<job> jobs);
 answer bnb(vector<job> jobs, int n, vector<node> active_nodes, long long int max_nodes, long long int max_time);
@@ -64,7 +66,7 @@ answer bnb(vector<job> jobs, int n, vector<node> active_nodes, long long int max
 /* relaxação 1: overlapping permitido na máquina 2
  * cada job começa logo após o seu término na máquina 1
  * */
-int s2(node &cur_node, vector<job> &jobs, int n) {
+tuple<int, long long int> s2(node &cur_node, vector<job> &jobs, int n) {
 
     //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
     int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
@@ -77,6 +79,9 @@ int s2(node &cur_node, vector<job> &jobs, int n) {
 
     // vector<int> aux = cur_node.jobs_in_m
     sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp2(jobs)); //increasing order of job duration on machine 2
+    
+    long long int local_primal = calc_end_time_m2(jobs, cur_node.jobs_in_m);
+
     int m_size = cur_node.jobs_in_m.size();
     int sum = 0;
     // cout << cj_size << "\n\n\n";
@@ -102,43 +107,50 @@ int s2(node &cur_node, vector<job> &jobs, int n) {
        sum += (n-i+1)*jobs[cur_job].d2; //n foi passado como parâmetro
     }
     // cout << "s2 heuristic returns " << sum << '\n';
-    return sum;
+    return make_tuple(sum, local_primal);
 }
 
 
 /* relaxação 1: overlapping permitido na máquina 2
 * cada job começa logo após o seu término na máquina 1
 * */
-int s1(node &cur_node, vector<job> &jobs, int n) {
+tuple<int, long long int> s1(node &cur_node, vector<job> &jobs, int n) {
 
-  //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
-  int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
+    //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
+    int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
 
-  int cj_size = cur_node.chosen_jobs.size();
-  for (int i = 0; i < cj_size; i++) {
-      int cur_job = cur_node.chosen_jobs[i];
-      f1tr += jobs[cur_job].d1; //vai somando as durações dos jobs na máquina 1 na ordem dada por chosen_jobs, isso é o próprio f1tr
-  }
+    int cj_size = cur_node.chosen_jobs.size();
+    for (int i = 0; i < cj_size; i++) {
+        int cur_job = cur_node.chosen_jobs[i];
+        f1tr += jobs[cur_job].d1; //vai somando as durações dos jobs na máquina 1 na ordem dada por chosen_jobs, isso é o próprio f1tr
+    }
 
-  // vector<int> aux = cur_node.jobs_in_m
-  sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp(jobs));
-  int m_size = cur_node.jobs_in_m.size();
-  int sum = 0;
-  for (int j = 0, i = cj_size+1; j < m_size; i++, j++) {
-      int cur_job = cur_node.jobs_in_m[j];
-      sum += f1tr;
-      sum += (n-i+1)*jobs[cur_job].d1; //passar n como parâmetro ou deixar global
-      sum += jobs[cur_job].d2;
-  }
-  // cout << "s1 heuristic returns " << sum << '\n';
+    // vector<int> aux = cur_node.jobs_in_m
+    sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp(jobs));
+    long long int local_primal = calc_end_time_m2(jobs, cur_node.jobs_in_m);
 
-  return sum;
+    int m_size = cur_node.jobs_in_m.size();
+    int sum = 0;
+    for (int j = 0, i = cj_size+1; j < m_size; i++, j++) {
+        int cur_job = cur_node.jobs_in_m[j];
+        sum += f1tr;
+        sum += (n-i+1)*jobs[cur_job].d1; //passar n como parâmetro ou deixar global
+        sum += jobs[cur_job].d2;
+    }
+    // cout << "s1 heuristic returns " << sum << '\n';
+
+    return make_tuple(sum, local_primal);
 }
 
-int calc_bound(node &cur_node, vector<job> jobs, int n) {
-    int chosen_acc = calc_end_time_m2(jobs, cur_node.chosen_jobs);
-    return cur_node.classif = chosen_acc + max(s1(cur_node, jobs, n), s2(cur_node, jobs, n));
-
+long long int calc_bound(node &cur_node, vector<job> jobs, int n) {
+    long long int s1_primal, s2_primal;
+    int sum_s1, sum_s2, chosen_acc;
+    tie(sum_s1, s1_primal) = s1(cur_node, jobs, n);
+    tie(sum_s2, s2_primal) = s2(cur_node, jobs, n);
+    chosen_acc = calc_end_time_m2(jobs, cur_node.chosen_jobs);
+    cur_node.classif = chosen_acc + max(sum_s1, sum_s2);
+    
+    return min(s1_primal, s2_primal);
 }
 
 long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs) {
@@ -197,7 +209,7 @@ long long int branch(long long int limitante_primal, vector<node> &active_nodes,
  *         update we may not cut many active nodes and cut nodes that will take
  *         longer to be open (wouldnt even be open maybe).
  *      */
-        cout << "Folha\n";
+        cout << "Folha" << endl;
         return calc_end_time_m2(jobs, active_nodes[min_pos].chosen_jobs); 
 
     }
@@ -219,17 +231,21 @@ long long int branch(long long int limitante_primal, vector<node> &active_nodes,
             }
 
             new_n.chosen_jobs.push_back(cur_job);
-            new_n.classif = calc_bound(new_n, jobs, n);
+        
+            long long int best_local_primal = calc_bound(new_n, jobs, n);
 
             /* if we already have something equal or better than this node is
-            * promessing, we do not need to consider it */
+               promessing, we do not need to consider it */
             /*
- *             TODO: a possible optimization is to find fast a limitante_primal
- *             so whenever you try to open a new node you check if that node
- *             deserves to be inserted. A better optimization is to find fast
- *             a really low limitante_primal to this problem of minimization.
- *      */
+               TODO: a possible optimization is to find fast a limitante_primal
+               so whenever you try to open a new node you check if that node
+               deserves to be inserted. A better optimization is to find fast
+               a really low limitante_primal to this problem of minimization.
+            */
 
+            limitante_primal = min(limitante_primal, best_local_primal);
+            
+            /* TODO: removing cut for test */
             if(new_n.classif >= limitante_primal) {
                 continue;
             }
@@ -237,9 +253,12 @@ long long int branch(long long int limitante_primal, vector<node> &active_nodes,
             active_nodes.push_back(new_n);
 
         }
+       
+        return limitante_primal; 
 
     }
-    return INF;
+
+    return -1;
 
 }
 
@@ -318,7 +337,10 @@ answer bnb(vector<job> jobs, int n, vector<node> active_nodes, long long int max
             break;
         }
 
+        /* TODO: removing cut for test */
         if (old_limitante_primal != ans.limitante_primal) {
+
+            //Because we erased a node above 
             an_size -= 1;
             for(int i = 0; i < an_size; i++) {
                 if(ans.limitante_primal <= active_nodes[i].classif) {
@@ -378,20 +400,24 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < n; i++) {
         initial.jobs_in_m.push_back(i);
     }
-    initial.classif = calc_bound(initial, jobs, n);
+
+    long long int garbage = calc_bound(initial, jobs, n);
     active_nodes.push_back(initial);
     /*a gente tem que implementar um algoritmo bruteforce que faz bfs no
     espaço de busca e faz bound pra melhor opção dada a função classificadora*/
     long long int sft; //sft := sum of finishing times (m2)
 
     answer ans = bnb(jobs, n, active_nodes, max_nodes, max_time);
+    ans.tempo_primal /= 1000000000; 
+    ans.tempo_dual /= 1000000000; 
+    ans.tempo_total /= 1000000000; 
     cout << argv[1] << ',';
     cout << ans.limitante_primal << ',';
     cout << ans.limitante_dual << ',';
     cout << ans.nodes_explored << ',';
-    cout << ans.tempo_primal << ',';  
-    cout << ans.tempo_dual << ',';  
-    cout << ans.tempo_total << '\n';
+    cout << fixed << setprecision(2) << ans.tempo_primal << ',';  
+    cout << fixed << setprecision(2) << ans.tempo_dual << ',';  
+    cout << fixed << setprecision(2) << ans.tempo_total << endl;
 
     return 0;
 }
