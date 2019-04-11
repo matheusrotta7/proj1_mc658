@@ -4,6 +4,8 @@
 
 using namespace std;
 
+int ac_nodes_size = 0;
+
 typedef struct job {
     int d1; //duração da tarefa na máquina 1
     int d2; // ----------------------------2
@@ -92,7 +94,7 @@ long long int bnb(vector<job> jobs, int n, vector<node> active_nodes);
          sum += (n-i+1)*jobs[cur_job].d2; //n foi passado como parâmetro
 
      }
-     // cout << "s2 heuristic returns " << sum << '\n';
+     cout << "s2 heuristic returns " << sum << '\n';
      return sum;
  }
 
@@ -121,7 +123,7 @@ long long int bnb(vector<job> jobs, int n, vector<node> active_nodes);
           sum += (n-i+1)*jobs[cur_job].d1; //passar n como parâmetro ou deixar global
           sum += jobs[cur_job].d2;
       }
-      // cout << "s1 heuristic returns " << sum << '\n';
+      cout << "s1 heuristic returns " << sum << '\n';
 
       return sum;
   }
@@ -306,12 +308,14 @@ int main() {
         jobs[i].d2 = b;
     }
 
-    vector<node> active_nodes;
+    vector<node> active_nodes; //size = 0;
+    priority_queue <pair<int, int>, vector<pair<int,int>>, greater<pair<int, int>>> pq;
     node initial;
     for (int i = 0; i < n; i++) {
         initial.jobs_in_m.push_back(i);
     }
     initial.classif = calc_bound(initial, jobs, n);
+    pq.push(pair<int,int>(initial.classif, ac_nodes_size++));
     active_nodes.push_back(initial);
     /*a gente tem que implementar um algoritmo bruteforce que faz bfs no
     espaço de busca e faz bound pra melhor opção dada a função classificadora*/
