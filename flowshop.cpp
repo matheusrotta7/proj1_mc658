@@ -38,6 +38,17 @@ struct Comp {
     vector<job> paramA;
 };
 
+struct Comp2 {
+    Comp2(vector<job> paramA) { this->paramA = paramA; }
+    bool operator () (int i, int j) {
+
+        return paramA[i].d2 < paramA[j].d2;
+
+    }
+
+    vector<job> paramA;
+};
+
 
 int s1(node &cur_node, vector<job> &jobs, int n);
 int calc_bound(node &cur_node, vector<job> jobs, int n);
@@ -53,7 +64,7 @@ answer bnb(vector<job> jobs, int n, vector<node> active_nodes, long long int max
 /* relaxação 1: overlapping permitido na máquina 2
  * cada job começa logo após o seu término na máquina 1
  * */
-int s1(node &cur_node, vector<job> &jobs, int n) {
+int s2(node &cur_node, vector<job> &jobs, int n) {
 
     //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
     int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
@@ -65,31 +76,69 @@ int s1(node &cur_node, vector<job> &jobs, int n) {
     }
 
     // vector<int> aux = cur_node.jobs_in_m
-    sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp(jobs));
+    sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp2(jobs)); //increasing order of job duration on machine 2
     int m_size = cur_node.jobs_in_m.size();
     int sum = 0;
-    for (int j = 0, i = cj_size+1; j < m_size; i++, j++) {
-        int cur_job = cur_node.jobs_in_m[j];
-        sum += f1tr;
-        sum += (n-i+1)*jobs[cur_job].d1; //passar n como parâmetro ou deixar global
-        sum += jobs[cur_job].d2;
+    // cout << cj_size << "\n\n\n";
+    int r;
+    if (cj_size != 0)
+       r = cur_node.chosen_jobs.back();
+    else
+       r = 0;
+    int f2tr = f1tr + jobs[r].d2;
+    int min1 = INF;
+    int min_index;
+    for (int i = 0; i < m_size; i++) {
+        int cur_job = cur_node.jobs_in_m[i];
+        if (min1 > jobs[cur_job].d1) {
+            min1 = jobs[cur_job].d1;
+            min_index = i;
+        }
     }
+    int special_value = max(f2tr, f1tr + min1);
+    for (int j = 0, i = cj_size+1; j < m_size; i++, j++) {
+       int cur_job = cur_node.jobs_in_m[j];
+       sum += special_value;
+       sum += (n-i+1)*jobs[cur_job].d2; //n foi passado como parâmetro
+    }
+    // cout << "s2 heuristic returns " << sum << '\n';
+    return sum;
+}
 
-     return sum;
- }
 
-/*int s2(node &n, vector<job> &jobs, int n) {
+/* relaxação 1: overlapping permitido na máquina 2
+* cada job começa logo após o seu término na máquina 1
+* */
+int s1(node &cur_node, vector<job> &jobs, int n) {
 
-}*/
+  //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
+  int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
+
+  int cj_size = cur_node.chosen_jobs.size();
+  for (int i = 0; i < cj_size; i++) {
+      int cur_job = cur_node.chosen_jobs[i];
+      f1tr += jobs[cur_job].d1; //vai somando as durações dos jobs na máquina 1 na ordem dada por chosen_jobs, isso é o próprio f1tr
+  }
+
+  // vector<int> aux = cur_node.jobs_in_m
+  sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp(jobs));
+  int m_size = cur_node.jobs_in_m.size();
+  int sum = 0;
+  for (int j = 0, i = cj_size+1; j < m_size; i++, j++) {
+      int cur_job = cur_node.jobs_in_m[j];
+      sum += f1tr;
+      sum += (n-i+1)*jobs[cur_job].d1; //passar n como parâmetro ou deixar global
+      sum += jobs[cur_job].d2;
+  }
+  // cout << "s1 heuristic returns " << sum << '\n';
+
+  return sum;
+}
 
 int calc_bound(node &cur_node, vector<job> jobs, int n) {
     int chosen_acc = calc_end_time_m2(jobs, cur_node.chosen_jobs);
-    return cur_node.classif = chosen_acc + s1(cur_node, jobs, n);
+    return cur_node.classif = chosen_acc + max(s1(cur_node, jobs, n), s2(cur_node, jobs, n));
 
-    /*
- *    SO FAR WE DO NOT HAVE S1
- * */
-    //return cur_node.classif = chosen_acc + max(s1(cur_node, jobs), s2(cur_node, jobs));
 }
 
 long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs) {
@@ -110,7 +159,7 @@ long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs) {
     int num_of_jobs = chosen_jobs.size();
 
     /* create a vector with end times (m1) for each chosen job in its order */
-    for(int i = 0; i < num_of_jobs; i++) { 
+    for(int i = 0; i < num_of_jobs; i++) {
         end_time_1.push_back(jobs[chosen_jobs[i]].d1 + end_time_1.back());
     }
 
@@ -123,10 +172,10 @@ long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs) {
             /* enter here menas that machine 2 is ready to operate now */
             end_time_2.push_back(end_time_1[i] + jobs[chosen_jobs[i]].d2);
         } else {
-            end_time_2.push_back(end_time_2.back() + jobs[chosen_jobs[i]].d2); 
+            end_time_2.push_back(end_time_2.back() + jobs[chosen_jobs[i]].d2);
         }
         sum += end_time_2.back();
-    } 
+    }
 
     // This erase is only necessary if you want to check end_time_2 values
     //end_time_2.erase(end_time_2.begin());
@@ -137,11 +186,9 @@ long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs) {
 long long int branch(long long int limitante_primal, vector<node> &active_nodes, int min_pos, int n, vector<job> jobs) {
     int num_of_jobs = active_nodes[min_pos].jobs_in_m.size();
     if (num_of_jobs == 0) {
-        //calcular para a folha
-        //(já está tudo definido)
         /*
  *         TODO: project decision: eliminate all the active nodes with classif
- *         higher than limitante_primal calculated everytime we get here. 
+ *         higher than limitante_primal calculated everytime we get here.
  *         Or only remove active nodes when limitante_primal is updated with
  *         a smaller value.
  *
@@ -168,7 +215,7 @@ long long int branch(long long int limitante_primal, vector<node> &active_nodes,
 
             int num_of_chosen = active_nodes[min_pos].chosen_jobs.size();
             for(int j = 0; j < num_of_chosen; j++) {
-                new_n.chosen_jobs.push_back(active_nodes[min_pos].chosen_jobs[j]); 
+                new_n.chosen_jobs.push_back(active_nodes[min_pos].chosen_jobs[j]);
             }
 
             new_n.chosen_jobs.push_back(cur_job);
@@ -180,7 +227,7 @@ long long int branch(long long int limitante_primal, vector<node> &active_nodes,
  *             TODO: a possible optimization is to find fast a limitante_primal
  *             so whenever you try to open a new node you check if that node
  *             deserves to be inserted. A better optimization is to find fast
- *             a really low limitante_primal to this problem of minimization. 
+ *             a really low limitante_primal to this problem of minimization.
  *      */
 
             if(new_n.classif >= limitante_primal) {
