@@ -80,7 +80,9 @@ tuple<int, long long int> s2(node &cur_node, vector<job> &jobs, int n) {
     // vector<int> aux = cur_node.jobs_in_m
     sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp2(jobs)); //increasing order of job duration on machine 2
     
-    long long int local_primal = calc_end_time_m2(jobs, cur_node.jobs_in_m);
+    vector<int> aux (cur_node.chosen_jobs);
+    aux.insert(aux.end(), cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end());
+    long long int local_primal = calc_end_time_m2(jobs, aux);
 
     int m_size = cur_node.jobs_in_m.size();
     int sum = 0;
@@ -127,7 +129,9 @@ tuple<int, long long int> s1(node &cur_node, vector<job> &jobs, int n) {
 
     // vector<int> aux = cur_node.jobs_in_m
     sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp(jobs));
-    long long int local_primal = calc_end_time_m2(jobs, cur_node.jobs_in_m);
+    vector<int> aux (cur_node.chosen_jobs);
+    aux.insert(aux.end(), cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end());
+    long long int local_primal = calc_end_time_m2(jobs, aux);
 
     int m_size = cur_node.jobs_in_m.size();
     int sum = 0;
