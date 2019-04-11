@@ -17,6 +17,16 @@ typedef struct node {
 
 } node;
 
+
+typedef struct answer {
+    long long int limitante_primal;
+    long long int limitante_dual;
+    long long int nodes_explored;
+    float tempo_primal;
+    float tempo_dual;
+    float tempo_total;
+} answer;
+
 struct Comp {
     Comp(vector<job> paramA) { this->paramA = paramA; }
     bool operator () (int i, int j) {
@@ -33,7 +43,7 @@ int s1(node &cur_node, vector<job> &jobs, int n);
 int calc_bound(node &cur_node, vector<job> jobs, int n);
 long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs);
 long long int branch(long long int limitante_primal, vector<node> &active_nodes, int min_pos, int n, vector<job> jobs);
-long long int bnb(vector<job> jobs, int n, vector<node> active_nodes);
+answer bnb(vector<job> jobs, int n, vector<node> active_nodes, long long int max_nodes, long long int max_time);
 
 /* https://hal.archives-ouvertes.fr/hal-00680452v1/document
  *
@@ -43,27 +53,27 @@ long long int bnb(vector<job> jobs, int n, vector<node> active_nodes);
 /* relaxação 1: overlapping permitido na máquina 2
  * cada job começa logo após o seu término na máquina 1
  * */
- int s1(node &cur_node, vector<job> &jobs, int n) {
+int s1(node &cur_node, vector<job> &jobs, int n) {
 
-     //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
-     int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
+    //ordenar duração de r+1 até n dos jobs em M1 em ordem crescente
+    int f1tr = 0; //f1tr: fim de tr na máquina 1 (otimizar)
 
-     int cj_size = cur_node.chosen_jobs.size();
-     for (int i = 0; i < cj_size; i++) {
-         int cur_job = cur_node.chosen_jobs[i];
-         f1tr += jobs[cur_job].d1; //vai somando as durações dos jobs na máquina 1 na ordem dada por chosen_jobs, isso é o próprio f1tr
-     }
+    int cj_size = cur_node.chosen_jobs.size();
+    for (int i = 0; i < cj_size; i++) {
+        int cur_job = cur_node.chosen_jobs[i];
+        f1tr += jobs[cur_job].d1; //vai somando as durações dos jobs na máquina 1 na ordem dada por chosen_jobs, isso é o próprio f1tr
+    }
 
-     // vector<int> aux = cur_node.jobs_in_m
-     sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp(jobs));
-     int m_size = cur_node.jobs_in_m.size();
-     int sum = 0;
-     for (int j = 0, i = cj_size+1; j < m_size; i++, j++) {
-         int cur_job = cur_node.jobs_in_m[j];
-         sum += f1tr;
-         sum += (n-i+1)*jobs[cur_job].d1; //passar n como parâmetro ou deixar global
-         sum += jobs[cur_job].d2;
-     }
+    // vector<int> aux = cur_node.jobs_in_m
+    sort(cur_node.jobs_in_m.begin(), cur_node.jobs_in_m.end(), Comp(jobs));
+    int m_size = cur_node.jobs_in_m.size();
+    int sum = 0;
+    for (int j = 0, i = cj_size+1; j < m_size; i++, j++) {
+        int cur_job = cur_node.jobs_in_m[j];
+        sum += f1tr;
+        sum += (n-i+1)*jobs[cur_job].d1; //passar n como parâmetro ou deixar global
+        sum += jobs[cur_job].d2;
+    }
 
      return sum;
  }
@@ -85,13 +95,13 @@ int calc_bound(node &cur_node, vector<job> jobs, int n) {
 long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs) {
 
     /* vector containing endtime for machine 1 (m1) */ 
-    vector<int>  end_time_1; 
+    vector<int> end_time_1; 
 
     /* adding dummy node to calculate end_time for m1 */
     end_time_1.push_back(0);
     
     /* vector containing endtime for machine 2 (m2) */ 
-    vector<int>  end_time_2; 
+    vector<int> end_time_2; 
 
     /* adding dummy node to calculate end_time for m2 */
     end_time_2.push_back(0);
@@ -127,8 +137,6 @@ long long int calc_end_time_m2(vector<job> &jobs, vector<int> &chosen_jobs) {
 long long int branch(long long int limitante_primal, vector<node> &active_nodes, int min_pos, int n, vector<job> jobs) {
     int num_of_jobs = active_nodes[min_pos].jobs_in_m.size();
     if (num_of_jobs == 0) {
-        long long int sum = 0;
-
         //calcular para a folha
         //(já está tudo definido)
         /*
@@ -142,7 +150,7 @@ long long int branch(long long int limitante_primal, vector<node> &active_nodes,
  *         update we may not cut many active nodes and cut nodes that will take
  *         longer to be open (wouldnt even be open maybe).
  *      */
-        cout << "FOLHAAAAA\n";
+        cout << "Folha\n";
         return calc_end_time_m2(jobs, active_nodes[min_pos].chosen_jobs); 
 
     }
@@ -188,22 +196,33 @@ long long int branch(long long int limitante_primal, vector<node> &active_nodes,
 
 }
 
-long long int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
+answer bnb(vector<job> jobs, int n, vector<node> active_nodes, long long int max_nodes, long long int max_time) {
 
     //temos duas divisões em conjuntos:
     /*nós ativos e não ativos (nós ativos são nós
      para os quais calculamos a função classificadora)*/
     //jobs em M e jobs fora de M (em M já decididos, fora ainda a explorar)
 
-    long long int limitante_primal = INF;
+    answer ans;
+
+    ans.limitante_primal = INF;
+    ans.limitante_dual = INF;
+    ans.nodes_explored = 0;
+    ans.tempo_primal = 0;
+    ans.tempo_dual = 0;
+    ans.tempo_total = 0;
 
     /*  TODO: esse while pode ter outra condição ne? a gente nao precisa ficar abrindo
      *  mais nos depois que limitante_primal = limitante_dual
-     *  TODO: a gente ta deixando de adicionar nos por limitantes, otimalidade?
      * */
-    while (!active_nodes.empty()) {
+
+    auto start = chrono::steady_clock::now();
+    auto end = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+
+    while (!active_nodes.empty() && ans.nodes_explored < max_nodes) {
         int an_size = active_nodes.size();
-        int min_classif = INF;
+        long long int min_classif = INF;
         int min_pos = -1; //because we believe that +INF is large enough, so min_pos will be overwritten
         for (int i = 0; i < an_size; i++) { //theta(an)
             if (min_classif > active_nodes[i].classif) {
@@ -211,42 +230,101 @@ long long int bnb(vector<job> jobs, int n, vector<node> active_nodes) {
                 min_pos = i;
             }
         }
+    
+        /* Check if we got a new lower dual bound  */ 
+        if(min_classif < ans.limitante_dual) {
+            end = chrono::steady_clock::now();
+            duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+            ans.tempo_dual = duration; 
+            ans.limitante_dual = min_classif;
+        }
 
-        long long int old_limitante_primal = limitante_primal;
-        limitante_primal = min(limitante_primal, branch(limitante_primal, active_nodes, min_pos, n, jobs));
+        /* After some block of instructions check if we exceeded the proposed time limiter */ 
+        end = chrono::steady_clock::now();
+        duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+            if(max_time <= (float)duration/1000000000) {
+            /* time limit exceeded */
+            ans.tempo_total = duration;
+            break;
+        }
+
+        ans.nodes_explored += 1;
+        long long int old_limitante_primal = ans.limitante_primal;
+
+        /* Check if we got a new lower primal bound  */ 
+        long long int branch_return = branch(ans.limitante_primal, active_nodes, min_pos, n, jobs);
+        if(branch_return < ans.limitante_primal) {
+            end = chrono::steady_clock::now();
+            duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+            ans.tempo_primal = duration; 
+            ans.limitante_primal = branch_return;
+        }
+
         active_nodes.erase(active_nodes.begin() + min_pos);
 
-        /* Check if limitante_primal was updated by above min() */
-        /*
- *         TODO: the below procedure gets REALLY faster using PriorityQueue
- *      */
-        if (old_limitante_primal != limitante_primal) {
+        /* After some block of instructions check if we exceeded the proposed time limiter */ 
+        end = chrono::steady_clock::now();
+        duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+        if(max_time <= (float)duration/1000000000) {
+            /* time limit exceeded */
+            ans.tempo_total = duration;
+            break;
+        }
+
+        if (old_limitante_primal != ans.limitante_primal) {
             an_size -= 1;
             for(int i = 0; i < an_size; i++) {
-                if(limitante_primal <= active_nodes[i].classif) {
+                if(ans.limitante_primal <= active_nodes[i].classif) {
                     active_nodes.erase(active_nodes.begin() + i);
                 }
             }
-
+        }
+        
+        /* After some block of instructions check if we exceeded the proposed time limiter */ 
+        end = chrono::steady_clock::now();
+        duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+        if(max_time <= (float)duration/1000000000) {
+            /* time limit exceeded */
+            ans.tempo_total = duration;
+            break;
         }
     }
 
-    return limitante_primal;
+    end = chrono::steady_clock::now();
+    ans.tempo_total = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+    return ans;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 
+    if (argc < 3) {
+        printf("ERROR! Less than 2 parameters were passed to bnb-fs\n");
+        return 0;
+    }
+
+    ifstream input_file, param_file;
+    input_file.open(argv[1]);
+    param_file.open(argv[2]);
+
+    long long int max_nodes, max_time;
+    
+    param_file >> max_nodes;
+    param_file >> max_time;
+    
     int n; //número de tarefas
-    cin >> n;
+    input_file >> n;
 
     vector<job> jobs(n);
 
     for (int i = 0; i < n; i++) {
         int a, b;
-        cin >> a >> b;
+        input_file >> a >> b;
         jobs[i].d1 = a;
         jobs[i].d2 = b;
     }
+
+    input_file.close();
+    param_file.close();
 
     vector<node> active_nodes;
     node initial;
@@ -259,8 +337,14 @@ int main() {
     espaço de busca e faz bound pra melhor opção dada a função classificadora*/
     long long int sft; //sft := sum of finishing times (m2)
 
-    sft = bnb(jobs, n, active_nodes);
-    cout << sft << '\n';
+    answer ans = bnb(jobs, n, active_nodes, max_nodes, max_time);
+    cout << argv[1] << ',';
+    cout << ans.limitante_primal << ',';
+    cout << ans.limitante_dual << ',';
+    cout << ans.nodes_explored << ',';
+    cout << ans.tempo_primal << ',';  
+    cout << ans.tempo_dual << ',';  
+    cout << ans.tempo_total << '\n';
 
     return 0;
 }
